@@ -94,8 +94,8 @@ in
         The GitHub Runner service is configured to makes the entire system read-only by default.
         This option can be used to allow specific paths to remain writable for the service.
 
-        Warning: As different unit might get the same UID/GID assigned later on, the files created in those paths are 
-        eventually accessible to all github runners. 
+        Warning: As different unit might get the same UID/GID assigned later on, the files created in those paths are
+        eventually accessible to all github runners.
         Therefore, this option should not be used if different GitHub Action pipelines should not be able to access state between each other for security reasons
       '';
       default = [ ];
@@ -160,6 +160,14 @@ in
       default = [ "nix" ];
     };
 
+    runnerGroup = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      description = lib.mdDoc ''
+        Name of the runner group to add this runner to (defaults to the default runner group).
+      '';
+      default = null;
+    };
+
     nodeRuntimes = lib.mkOption {
       type =
         with lib.types;
@@ -171,6 +179,27 @@ in
       description = ''
         List of Node.js runtimes the runner should support.
       '';
+    };
+
+    cpuQuota = lib.mkOption {
+      type = lib.types.ints.unsigned;
+      description = lib.mdDoc ''
+        Sets the service cpu quota. 100 points equal a single CPU core. A value
+        of 0 gives unlimited quota.
+      '';
+      default = 0;
+    };
+
+    limitedResources = lib.mkOption {
+      type = lib.types.bool;
+      description = lib.mdDoc ''
+        If enabled, causes the service resources to be limited as follows:
+
+        - CPUWeight: set lower than default to keep rest of the system responsive
+        - IOWeight: set lower than default to keep rest of the system responsive
+        - MemorySwapMax: disabled to prevent runners to use swap at all
+      '';
+      default = false;
     };
   };
 
@@ -187,12 +216,21 @@ in
           tokenFile = cfg.tokenFile;
           githubApp = cfg.githubApp;
           ephemeral = cfg.ephemeral;
+          runnerGroup = cfg.runnerGroup;
           nodeRuntimes = cfg.nodeRuntimes;
           serviceOverrides = {
             DeviceAllow = [ "/dev/kvm" ];
             PrivateDevices = false;
-          }
-          // (lib.optionalAttrs (cfg.extraReadWritePaths != [ ]) {
+          } // (lib.optionalAttrs (cfg.extraReadWritePaths != [ ]) {
+            ReadWritePaths = cfg.extraReadWritePaths;
+            Group = [ "github-runner" ];
+          }) // (lib.optionalAttrs (cfg.cpuQuota > 0) {
+            CPUQuota = "${builtins.toString cfg.cpuQuota}%";
+          }) // (lib.optionalAttrs (cfg.limitedResources) {
+            CPUWeight = "90";
+            IOWeight = "90";
+            MemorySwapMax = "0";
+          }) // (lib.optionalAttrs (cfg.extraReadWritePaths != [ ]) {
             ReadWritePaths = cfg.extraReadWritePaths;
             Group = [ "github-runner" ];
           });
