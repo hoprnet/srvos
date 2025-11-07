@@ -172,7 +172,6 @@ in
       type =
         with lib.types;
         nonEmptyListOf (enum [
-          "node16"
           "node20"
           "node24"
         ]);
