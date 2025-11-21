@@ -200,7 +200,7 @@ in
               args=(
                 --unattended
                 --disableupdate
-                --work "$RUNTIME_DIRECTORY"
+                --work "$STATE_DIRECTORY/work"
                 --url ${escapeShellArg cfg.url}
                 --labels ${escapeShellArg (concatStringsSep "," cfg.extraLabels)}
                 --name ${escapeShellArg cfg.name}
